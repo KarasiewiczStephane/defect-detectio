@@ -4,13 +4,14 @@
 
 ## Features
 
-- **Transfer Learning** — ResNet-50 pretrained on ImageNet, fine-tuned for binary defect classification
-- **Defect Localization** — Grad-CAM heatmaps highlighting which image regions triggered the prediction
-- **Active Learning** — Uncertainty sampling to prioritize the most informative images for labeling
-- **Edge Deployment** — ONNX Runtime export for low-latency inference on CPU
-- **REST API** — FastAPI endpoints for single-image detection, batch processing, and health checks
-- **Batch CLI** — Command-line tool for quality control pipeline integration with JSON/CSV reports
-- **Production Ready** — Multi-stage Docker build, GitHub Actions CI, >80% test coverage
+- **Transfer Learning** -- ResNet-50 pretrained on ImageNet, fine-tuned for binary defect classification
+- **Defect Localization** -- Grad-CAM heatmaps highlighting which image regions triggered the prediction
+- **Active Learning** -- Uncertainty sampling to prioritize the most informative images for labeling
+- **Edge Deployment** -- ONNX Runtime export for low-latency inference on CPU
+- **REST API** -- FastAPI endpoints for single-image detection, batch processing, and health checks
+- **Dashboard** -- Streamlit dashboard with per-category metrics, confusion matrix, training curves, and latency comparison
+- **Batch CLI** -- Command-line tool for quality control pipeline integration with JSON/CSV reports
+- **Production Ready** -- Multi-stage Docker build, GitHub Actions CI, >80% test coverage
 
 ## Model Performance
 
@@ -41,23 +42,55 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/defect-detection.git
+git clone https://github.com/KarasiewiczStephane/defect-detection.git
 cd defect-detection
 
 # Install dependencies
-pip install -r requirements.txt
+make install
 
-# Create sample data for testing
+# Create sample data for testing (synthetic images in data/sample/)
 python scripts/create_sample_data.py
 
 # Run tests
 make test
 
-# Start API server
-python -m src.main serve --port 8000
+# Launch the Streamlit dashboard
+make dashboard
 
-# Batch process a directory of images
-python -m src.main batch -i /path/to/images -o results/ -m models/model.onnx
+# Start the API server (port 8000)
+make serve
+```
+
+## Data
+
+The project uses the [MVTec Anomaly Detection](https://www.mvtec.com/company/research/datasets/mvtec-ad) dataset. The downloader in `src/data/downloader.py` handles fetching and extracting selected categories:
+
+```python
+from src.data.downloader import MVTecDownloader
+
+downloader = MVTecDownloader(root_dir="data/raw", categories=["bottle", "carpet", "metal_nut"])
+archive = downloader.download()
+downloader.extract(archive)
+```
+
+For testing without downloading the full dataset, generate synthetic sample images:
+
+```bash
+python scripts/create_sample_data.py
+```
+
+This creates `data/sample/` with train/test splits for each category.
+
+## Dashboard
+
+The Streamlit dashboard visualizes model performance, per-category accuracy, confusion matrix, inference latency comparison, and training history.
+
+```bash
+# Launch dashboard (default port 8501)
+make dashboard
+
+# Or run directly
+streamlit run src/dashboard/app.py
 ```
 
 ## Training
@@ -71,6 +104,8 @@ python -m src.main export --checkpoint checkpoints/best_model.pt --output models
 ```
 
 ## API Usage
+
+Start the server with `make serve`, then:
 
 ```bash
 # Health check
@@ -102,6 +137,16 @@ result = response.json()
 print(f"Defect: {result['is_defect']}, Confidence: {result['confidence']:.2%}")
 ```
 
+## Batch Processing
+
+Process an entire directory of images from the command line:
+
+```bash
+python -m src.main batch -i /path/to/images -o results/ -m models/defect_model.onnx --format json
+```
+
+Options: `--threshold` (default 0.5), `--gradcam` (save Grad-CAM overlays), `--format json|csv`.
+
 ## Docker
 
 ```bash
@@ -112,7 +157,7 @@ make docker-build
 make docker-run
 
 # Or use docker compose
-docker compose up -d
+make docker-compose-up
 ```
 
 ## Project Structure
@@ -120,9 +165,9 @@ docker compose up -d
 ```
 defect-detection/
 ├── src/
-│   ├── main.py                  # CLI entry point
+│   ├── main.py                  # CLI entry point (train, export, serve, batch)
 │   ├── data/
-│   │   ├── downloader.py        # MVTec AD dataset downloader
+│   │   ├── downloader.py        # MVTec AD dataset downloader + sample generator
 │   │   ├── preprocessor.py      # Transforms, dataset, splitting
 │   │   └── augmentation.py      # MixUp, CutOut augmentations
 │   ├── models/
@@ -139,12 +184,15 @@ defect-detection/
 │   ├── api/
 │   │   ├── app.py               # FastAPI application
 │   │   └── schemas.py           # Request/response models
+│   ├── dashboard/
+│   │   └── app.py               # Streamlit dashboard
 │   └── utils/
 │       ├── config.py            # YAML config manager
 │       └── logger.py            # Structured logging setup
 ├── tests/                       # Unit and integration tests
 ├── configs/config.yaml          # All configuration values
-├── scripts/                     # Utility scripts
+├── scripts/
+│   └── create_sample_data.py    # Generate synthetic test images
 ├── data/sample/                 # Sample data for CI
 ├── Dockerfile                   # Multi-stage production build
 ├── docker-compose.yml           # Container orchestration
@@ -158,17 +206,17 @@ defect-detection/
 
 All configurable values live in `configs/config.yaml`:
 
-- **Data** — image size, categories, train/val/test splits, ImageNet normalization stats
-- **Model** — architecture, number of classes, pretrained flag
-- **Training** — batch size, learning rate, epochs, early stopping patience
-- **Active Learning** — uncertainty threshold, samples per round
-- **Deployment** — ONNX opset version, benchmark iterations
-- **API** — host, port
+- **Data** -- image size, categories, train/val/test splits, ImageNet normalization stats
+- **Model** -- architecture (resnet50), number of classes, pretrained flag
+- **Training** -- batch size, learning rate, epochs, early stopping patience
+- **Active Learning** -- uncertainty threshold, samples per round
+- **Deployment** -- ONNX opset version, benchmark iterations, model path
+- **API** -- host, port
 
 ## Development
 
 ```bash
-# Install dev dependencies
+# Install dependencies
 make install
 
 # Lint and format
@@ -179,7 +227,30 @@ make pre-commit
 
 # Run test suite with coverage
 make test
+
+# Launch dashboard
+make dashboard
+
+# Start API server
+make serve
 ```
+
+## Makefile Targets
+
+| Target               | Description                              |
+|----------------------|------------------------------------------|
+| `make install`       | Install Python dependencies              |
+| `make test`          | Run pytest with coverage                 |
+| `make lint`          | Lint and format with ruff                |
+| `make clean`         | Remove `__pycache__` and `.pyc` files    |
+| `make run`           | Run `python -m src.main`                 |
+| `make serve`         | Start FastAPI server on port 8000        |
+| `make dashboard`     | Launch Streamlit dashboard               |
+| `make docker-build`  | Build Docker image                       |
+| `make docker-run`    | Run Docker container on port 8000        |
+| `make docker-compose-up`  | Start services with docker compose  |
+| `make docker-compose-down`| Stop docker compose services         |
+| `make pre-commit`    | Run all pre-commit hooks                 |
 
 ## Tech Stack
 
@@ -187,7 +258,8 @@ make test
 - **Edge Inference:** ONNX Runtime
 - **Computer Vision:** OpenCV
 - **API:** FastAPI, uvicorn
-- **Testing:** pytest, pytest-cov
+- **Dashboard:** Streamlit, Plotly
+- **Testing:** pytest, pytest-cov, pytest-asyncio
 - **Linting:** ruff, pre-commit
 - **Containerization:** Docker
 - **CI/CD:** GitHub Actions

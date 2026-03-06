@@ -1,4 +1,4 @@
-.PHONY: install test lint clean run docker docker-build docker-run docker-compose-up docker-compose-down
+.PHONY: install test lint clean run dashboard docker docker-build docker-run docker-compose-up docker-compose-down
 
 install:
 	pip install -r requirements.txt
@@ -19,6 +19,9 @@ run:
 
 serve:
 	python -m src.main serve --host 0.0.0.0 --port 8000
+
+dashboard:
+	streamlit run src/dashboard/app.py
 
 docker-build:
 	docker build -t defect-detection:latest .
