@@ -9,6 +9,7 @@ torchvision>=0.16.0
 # ONNX
 onnx>=1.15.0
 onnxruntime>=1.16.0
+onnxscript>=0.1.0
 
 # Computer Vision
 opencv-python-headless>=4.8.0
