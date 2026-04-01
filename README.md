@@ -264,6 +264,11 @@ make serve
 - **Containerization:** Docker
 - **CI/CD:** GitHub Actions
 
+
+## Author
+
+**Stéphane Karasiewicz** — [skarazdata.com](https://skarazdata.com) | [LinkedIn](https://www.linkedin.com/in/stephane-karasiewicz/)
+
 ## License
 
 MIT
